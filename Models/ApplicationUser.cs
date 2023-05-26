@@ -12,5 +12,6 @@ namespace JWT_Test.Models
         public string FirstName { get; set; }
         [StringLength(50)]
         public string LastName { get; set; }
+        public List<RefreshToken>? RefreshTokens { get; set; }
     }
 }

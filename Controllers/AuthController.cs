@@ -27,8 +27,9 @@ namespace JWT_Test.Controllers
             var res = await _auth.RegisterAsync(model);
             if (!res.IsAuthenticated)
                 return BadRequest(res.Message);
-            else
-                return Ok(new { Token = res.Token, ExpireOn = res.ExpireOn });
+                 SetRefreshTokenInCookie(res.RefreshToken, res.RefreshTokenExpiration);
+       
+            return Ok(new {res});
 
 
         }
@@ -45,7 +46,49 @@ namespace JWT_Test.Controllers
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);
 
+            if (!string.IsNullOrEmpty(result.RefreshToken))
+            {
+                SetRefreshTokenInCookie(result.RefreshToken, result.RefreshTokenExpiration);
+            }
             return Ok(result);
+        }
+
+        [HttpGet("refreshToken")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            var result = await _auth.RefreshTokenAsync(refreshToken);
+
+            if (!result.IsAuthenticated)
+                return BadRequest(result);
+            SetRefreshTokenInCookie(result.RefreshToken, result.RefreshTokenExpiration);
+            return Ok(result);
+
+        }
+
+        [HttpPost("revoktoken")]
+        public async Task<IActionResult> RevokToken([FromBody] RevokToken revokToken)
+        {
+            var token = revokToken.Token ?? Request.Cookies["refreshToken"];
+
+            if (string.IsNullOrEmpty(token))
+                return BadRequest("Token Is Requrid");
+
+            var result = await _auth.RevokTokenAsync(token);
+            if (!result)
+                return BadRequest("Token Is Invaild");
+            return Ok();
+              
+        }
+        private void SetRefreshTokenInCookie(string refreshToken,DateTime expires)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = expires.ToLocalTime()
+            };
+            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
     }
 }
